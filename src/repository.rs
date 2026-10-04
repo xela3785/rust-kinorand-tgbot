@@ -99,6 +99,7 @@ pub async fn unregister_chat_member(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn is_chat_member(pool: &SqlitePool, chat_id: i64, telegram_id: i64) -> Result<bool> {
     let count: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM chat_members WHERE chat_id = ? AND telegram_id = ?")

@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 use teloxide::prelude::*;
+use teloxide::sugar::request::RequestLinkPreviewExt;
 use teloxide::types::{InputFile, ParseMode};
 use teloxide::utils::html::escape;
 
@@ -20,7 +21,9 @@ pub async fn handle(
         bot.send_message(
             msg.chat.id,
             "⚠️ Укажи ссылку на фильм с кинопоиска. Пример: \n `/add https://kinopoisk.ru/film/12345/`"
-        ).await?;
+        )
+        .disable_link_preview(true)
+        .await?;
         return Ok(());
     }
 

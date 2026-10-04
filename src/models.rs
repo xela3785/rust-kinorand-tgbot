@@ -2,6 +2,7 @@ use serde_json::Value;
 use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct Film {
     pub id: i64,
     pub telegram_id: i64,
