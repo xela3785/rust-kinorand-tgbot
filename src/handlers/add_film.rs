@@ -1,5 +1,7 @@
-use teloxide::prelude::*;
 use sqlx::SqlitePool;
+use teloxide::prelude::*;
+use teloxide::types::{InputFile, ParseMode};
+use teloxide::utils::html::escape;
 
 use crate::integrations::id_parser;
 use crate::integrations::movie_api::KinoClient;
@@ -26,19 +28,15 @@ pub async fn handle(
         Ok(id) => id,
         Err(e) => {
             log::error!("Failed to extract ID from URL: {}", e);
-            bot.send_message(
-                msg.chat.id,
-                "⚠️ Не удалось извлечь ID фильма из ссылки"
-            ).await?;
+            bot.send_message(msg.chat.id, "⚠️ Не удалось извлечь ID фильма из ссылки")
+                .await?;
             return Ok(());
         }
     };
 
     if repository::film_exists(&pool, kinopoisk_id).await? {
-        bot.send_message(
-            msg.chat.id,
-            "ℹ️ Такой фильм уже есть"
-        ).await?;
+        bot.send_message(msg.chat.id, "ℹ️ Такой фильм уже есть")
+            .await?;
         return Ok(());
     }
 
@@ -46,10 +44,8 @@ pub async fn handle(
         Ok(meta) => meta,
         Err(e) => {
             log::error!("Failed to fetch movie info: {}", e);
-            bot.send_message(
-                msg.chat.id,
-                "⚠️ Не удалось получить информацию о фильме"
-            ).await?;
+            bot.send_message(msg.chat.id, "⚠️ Не удалось получить информацию о фильме")
+                .await?;
             return Ok(());
         }
     };
@@ -59,25 +55,41 @@ pub async fn handle(
 
     match repository::add_film(&pool, telegram_id, username, &metadata).await {
         Ok(_) => {
+            let title = metadata.title.unwrap();
+            let original_title = metadata.original_title.unwrap();
+            let year = metadata.year.unwrap();
+
+            let movie_title = if original_title.is_empty() || title == original_title {
+                format!("<b>{}</b>", escape(&title))
+            } else {
+                format!(
+                    "<b>{}</b> <i>| {}</i>",
+                    escape(&title),
+                    escape(&original_title)
+                )
+            };
+
             let response = format!(
-                "✅ Фильм добавлен! 🎬\n{} ({})\n{}",
-                metadata.title.unwrap_or_default(),
-                metadata.original_title.unwrap_or_default(),
-                metadata.year.unwrap_or_default(),
+                "✨ <b>Фильм успешно добавлен!</b>\n\n\
+                🎬 {}\n\
+                📅 <code>{} год</code>",
+                movie_title,
+                escape(&year.to_string())
             );
 
-            bot.send_message(
+            bot.send_photo(
                 msg.chat.id,
-                response
-            ).await?;
+                InputFile::url(metadata.poster_url.unwrap_or_default().parse().unwrap()),
+            )
+            .caption(response)
+            .parse_mode(ParseMode::Html)
+            .await?;
         }
 
         Err(e) => {
             log::error!("Failed to add film to database: {}", e);
-            bot.send_message(
-                msg.chat.id,
-                "❌ Не удалось добавить фильм"
-            ).await?;
+            bot.send_message(msg.chat.id, "❌ Не удалось добавить фильм")
+                .await?;
         }
     }
 

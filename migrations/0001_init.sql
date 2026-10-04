@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS films (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, 
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE (kinopoisk_id)
+    UNIQUE (kinopoisk_id, telegram_id)
 );
 
 

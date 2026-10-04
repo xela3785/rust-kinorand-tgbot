@@ -1,5 +1,5 @@
-use sqlx::FromRow;
 use serde_json::Value;
+use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Film {

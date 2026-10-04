@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
-use reqwest::{Client};
+use anyhow::{Result, anyhow};
+use log::info;
+use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use log::info;
 
 #[derive(Debug, Clone)]
 pub struct MovieMetadata {
@@ -23,7 +23,7 @@ struct KinoMovie {
     alternative_name: Option<String>,
     year: Option<i32>,
     description: Option<String>,
-    poster: Option<KinoPoster>,      // ← Объект, а не строка
+    poster: Option<KinoPoster>, // ← Объект, а не строка
 }
 
 #[derive(Deserialize, Debug)]
@@ -52,7 +52,8 @@ impl KinoClient {
     pub async fn find_by_id(&self, id: i64, kinopoisk_url: &str) -> Result<MovieMetadata> {
         let url = format!("{}/{}", self.base_url, id);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("X-API-KEY", &self.api_key)
             .header("Accept", "application/json")
@@ -75,8 +76,7 @@ impl KinoClient {
         info!("Movie: {:?}", movie);
 
         // Извлекаем URL постера из вложенного объекта
-        let poster_url = movie.poster
-            .and_then(|p| p.url.or(p.preview_url));
+        let poster_url = movie.poster.and_then(|p| p.url.or(p.preview_url));
 
         // Извлекаем рейтинг Кинопоиска
         Ok(MovieMetadata {

@@ -1236,9 +1236,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "dotenvy",
+ "fastrand",
  "log",
  "pretty_env_logger",
- "rand",
  "regex",
  "reqwest",
  "serde",

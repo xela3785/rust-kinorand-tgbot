@@ -4,9 +4,9 @@ use std::env;
 use teloxide::prelude::*;
 
 mod handlers;
+mod integrations;
 mod models;
 mod repository;
-mod integrations;
 
 use integrations::movie_api::KinoClient;
 
@@ -16,10 +16,11 @@ async fn main() -> anyhow::Result<()> {
 
     pretty_env_logger::init();
 
-    let token  = env::var("TELOXIDE_TOKEN").expect("TELOXIDE_TOKEN environment variable not set");
+    let token = env::var("TELOXIDE_TOKEN").expect("TELOXIDE_TOKEN environment variable not set");
 
     let api_key = env::var("KINO_API_KEY").expect("KINO_API_KEY environment variable not set");
-    let base_url = env::var("KINO_API_BASE_URL").expect("KINO_API_BASE_URL environment variable not set");
+    let base_url =
+        env::var("KINO_API_BASE_URL").expect("KINO_API_BASE_URL environment variable not set");
 
     log::info!("DB initialized...");
     let pool = SqlitePoolOptions::new()
@@ -27,9 +28,7 @@ async fn main() -> anyhow::Result<()> {
         .connect("sqlite:films.db?mode=rwc")
         .await?;
 
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await?;
+    sqlx::migrate!("./migrations").run(&pool).await?;
 
     log::info!("DB initialized successfully.");
 
