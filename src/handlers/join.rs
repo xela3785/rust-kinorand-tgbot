@@ -19,7 +19,10 @@ pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
 
     repository::register_chat_member(&pool, chat_id, telegram_id, username).await?;
 
-    bot.send_message(msg.chat.id, "Вы успешно присоединились к чату")
+    bot.send_message(
+        msg.chat.id,
+        "Вы успешно присоединились к чату. Теперь добавленные вами фильмы будут учавствовать в выборе случайных",
+    )
         .await?;
 
     Ok(())

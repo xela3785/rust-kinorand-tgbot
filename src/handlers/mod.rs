@@ -29,7 +29,7 @@ pub enum Command {
     Help,
 
     #[command(
-        description = "Добавить жемчужину: /add [ссылка на кинопоиск]",
+        description = "Добавить фильм: /add [ссылка на кинопоиск]",
         parse_with = "split"
     )]
     Add(String),
@@ -41,7 +41,7 @@ pub enum Command {
     Random(i32),
 
     #[command(
-        description = "Выбрать по фильму от каждого",
+        description = "Выбрать по фильму от каждого участника",
         rename = "random_per_user"
     )]
     RandomPerUser,

@@ -15,8 +15,11 @@ pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
 
     repository::unregister_chat_member(&pool, chat_id, telegram_id).await?;
 
-    bot.send_message(msg.chat.id, "✅ Вы успешно вышли из чата")
-        .await?;
+    bot.send_message(
+        msg.chat.id,
+        "✅ Вы успешно вышли из чата. Ваши фильмы больше не будут учавствовать в выборе случайных",
+    )
+    .await?;
 
     Ok(())
 }
