@@ -158,3 +158,18 @@ pub async fn get_chat_films(pool: &SqlitePool, chat_id: i64) -> Result<Vec<Film>
 
     Ok(films)
 }
+
+pub async fn get_personal_films(pool: &SqlitePool, telegram_id: i64) -> Result<Vec<Film>> {
+    let films = sqlx::query_as::<_, Film>(
+        r#"
+            SELECT f.* FROM films f
+            WHERE f.telegram_id == ? AND f.is_seen = 0
+            ORDER BY f.created_at DESC
+        "#,
+    )
+    .bind(telegram_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(films)
+}
