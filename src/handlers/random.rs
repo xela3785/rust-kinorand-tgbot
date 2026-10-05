@@ -20,12 +20,7 @@ fn choose_multiple<T: Clone>(items: &[T], count: usize) -> Vec<T> {
     result
 }
 
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-    count: i32,
-) -> HandlerResult {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool, count: i32) -> HandlerResult {
     let chat_id = msg.chat.id.0;
 
     if msg.chat.is_private() {

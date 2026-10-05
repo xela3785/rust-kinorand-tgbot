@@ -7,13 +7,7 @@ use teloxide::utils::html::escape;
 
 use crate::{dialogue::HandlerResult, repository};
 
-
-
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-) -> HandlerResult {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
     let chat_id = msg.chat.id.0;
 
     if msg.chat.is_private() {

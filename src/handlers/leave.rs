@@ -3,11 +3,7 @@ use teloxide::prelude::*;
 
 use crate::{dialogue::HandlerResult, repository};
 
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-) -> HandlerResult {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
     if msg.chat.is_private() {
         bot.send_message(msg.chat.id, "Вы не можете выйти из чата в личном сообщении")
             .await?;
