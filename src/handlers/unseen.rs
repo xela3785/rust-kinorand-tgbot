@@ -1,14 +1,14 @@
 use sqlx::SqlitePool;
 use teloxide::prelude::*;
 
-use crate::{integrations::id_parser, repository};
+use crate::{integrations::id_parser, dialogue::HandlerResult, repository};
 
 pub async fn handle(
     bot: Bot,
     msg: Message,
     pool: SqlitePool,
     url: String,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> HandlerResult {
     let url = url.trim();
 
     if url.is_empty() {

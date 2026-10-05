@@ -1,13 +1,13 @@
 use sqlx::SqlitePool;
 use teloxide::prelude::*;
 
-use crate::repository;
+use crate::{dialogue::HandlerResult, repository};
 
 pub async fn handle(
     bot: Bot,
     msg: Message,
     pool: SqlitePool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> HandlerResult {
     let telegram_id = msg.from.as_ref().map(|u| u.id.0 as i64).unwrap_or(0);
 
     if msg.chat.is_private() {

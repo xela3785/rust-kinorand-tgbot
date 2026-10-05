@@ -1,13 +1,15 @@
 use sqlx::SqlitePool;
 use teloxide::prelude::*;
 
-use crate::repository;
+use crate::{dialogue::HandlerResult, repository};
+
+
 
 pub async fn handle(
     bot: Bot,
     msg: Message,
     pool: SqlitePool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> HandlerResult {
     if msg.chat.is_private() {
         bot.send_message(
             msg.chat.id,

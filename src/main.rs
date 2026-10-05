@@ -1,13 +1,17 @@
 use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::env;
+use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::*;
+use teloxide::utils::command::BotCommands;
 
+mod dialogue;
 mod handlers;
 mod integrations;
 mod models;
 mod repository;
 
+use dialogue::Dialogue;
 use integrations::movie_api::KinoClient;
 
 #[tokio::main]
@@ -36,10 +40,16 @@ async fn main() -> anyhow::Result<()> {
 
     let bot = Bot::new(token);
 
+    if let Err(err) = bot.set_my_commands(handlers::Command::bot_commands()).await {
+        log::error!("Не удалось установить меню комманд: {:?}", err);
+    }
+
+    let dialogue_storage = InMemStorage::<Dialogue>::new();
+
     log::info!("Bot started...");
 
     teloxide::dispatching::Dispatcher::builder(bot, handlers::schema())
-        .dependencies(dptree::deps![pool, api_client])
+        .dependencies(dptree::deps![pool, api_client, dialogue_storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
