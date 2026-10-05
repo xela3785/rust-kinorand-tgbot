@@ -1,13 +1,9 @@
 use sqlx::SqlitePool;
 use teloxide::prelude::*;
 
-use crate::repository;
+use crate::{dialogue::HandlerResult, repository};
 
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
     if msg.chat.is_private() {
         bot.send_message(msg.chat.id, "Вы не можете выйти из чата в личном сообщении")
             .await?;
@@ -19,8 +15,11 @@ pub async fn handle(
 
     repository::unregister_chat_member(&pool, chat_id, telegram_id).await?;
 
-    bot.send_message(msg.chat.id, "✅ Вы успешно вышли из чата")
-        .await?;
+    bot.send_message(
+        msg.chat.id,
+        "✅ Вы успешно вышли из чата. Ваши фильмы больше не будут учавствовать в выборе случайных",
+    )
+    .await?;
 
     Ok(())
 }

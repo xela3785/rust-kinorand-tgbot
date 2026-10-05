@@ -4,6 +4,7 @@ use teloxide::sugar::request::RequestLinkPreviewExt;
 use teloxide::types::{InputFile, ParseMode};
 use teloxide::utils::html::escape;
 
+use crate::dialogue::{Dialogue, DialogueState, HandlerResult};
 use crate::integrations::id_parser;
 use crate::integrations::movie_api::KinoClient;
 use crate::repository;
@@ -13,20 +14,58 @@ pub async fn handle(
     msg: Message,
     pool: SqlitePool,
     api_client: KinoClient,
+    dialogue: DialogueState,
     url: String,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> HandlerResult {
     let url = url.trim();
 
     if url.is_empty() {
+        dialogue.update(Dialogue::WaitForUrl).await?;
+
         bot.send_message(
             msg.chat.id,
-            "⚠️ Укажи ссылку на фильм с кинопоиска. Пример: \n `/add https://kinopoisk.ru/film/12345/`"
+            "Укажи ссылку на фильм с кинопоиска в следующем сообщении. Например https://kinopoisk.ru/film/12345/"
         )
         .disable_link_preview(true)
         .await?;
+
         return Ok(());
     }
 
+    process_url(bot, msg, pool, api_client, dialogue, url).await
+}
+
+pub async fn handle_url_message(
+    bot: Bot,
+    msg: Message,
+    pool: SqlitePool,
+    api_client: KinoClient,
+    dialogue: DialogueState,
+) -> HandlerResult {
+    let url = match msg.text() {
+        Some(text) => text.trim(),
+        None => {
+            bot.send_message(
+                msg.chat.id,
+                "🔴 Ожидалась ссылка на кинопоиск, пример: https://kinopoisk.ru/film/12345/. Попробуй еще раз или введи /cancel"
+            )
+            .disable_link_preview(true)
+            .await?;
+            return Ok(());
+        }
+    };
+
+    process_url(bot, msg.clone(), pool, api_client, dialogue, url).await
+}
+
+async fn process_url(
+    bot: Bot,
+    msg: Message,
+    pool: SqlitePool,
+    api_client: KinoClient,
+    dialogue: DialogueState,
+    url: &str,
+) -> HandlerResult {
     let kinopoisk_id = match id_parser::extract_id(url) {
         Ok(id) => id,
         Err(e) => {
@@ -40,6 +79,7 @@ pub async fn handle(
     if repository::film_exists(&pool, kinopoisk_id).await? {
         bot.send_message(msg.chat.id, "ℹ️ Такой фильм уже есть")
             .await?;
+        dialogue.update(Dialogue::Start).await?;
         return Ok(());
     }
 
@@ -49,6 +89,7 @@ pub async fn handle(
             log::error!("Failed to fetch movie info: {}", e);
             bot.send_message(msg.chat.id, "⚠️ Не удалось получить информацию о фильме")
                 .await?;
+            dialogue.update(Dialogue::Start).await?;
             return Ok(());
         }
     };
@@ -94,7 +135,9 @@ pub async fn handle(
             bot.send_message(msg.chat.id, "❌ Не удалось добавить фильм")
                 .await?;
         }
-    }
+    };
+
+    dialogue.update(Dialogue::Start).await?;
 
     Ok(())
 }

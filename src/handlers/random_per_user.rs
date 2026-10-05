@@ -5,13 +5,9 @@ use teloxide::sugar::request::RequestLinkPreviewExt;
 use teloxide::types::ParseMode;
 use teloxide::utils::html::escape;
 
-use crate::repository;
+use crate::{dialogue::HandlerResult, repository};
 
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool) -> HandlerResult {
     let chat_id = msg.chat.id.0;
 
     if msg.chat.is_private() {

@@ -1,8 +1,10 @@
 use sqlx::SqlitePool;
 use teloxide::dispatching::UpdateHandler;
+use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
 
+use crate::dialogue::{Dialogue, DialogueState, HandlerResult};
 use crate::integrations::movie_api::KinoClient;
 use crate::repository;
 
@@ -26,7 +28,10 @@ pub enum Command {
     #[command(description = "Показать справку")]
     Help,
 
-    #[command(description = "Добавить жемчужину: /add [ссылка на кинопоиск]")]
+    #[command(
+        description = "Добавить фильм: /add [ссылка на кинопоиск]",
+        parse_with = "split"
+    )]
     Add(String),
 
     #[command(description = "Показать количество фильмов")]
@@ -36,7 +41,7 @@ pub enum Command {
     Random(i32),
 
     #[command(
-        description = "Выбрать по фильму от каждого",
+        description = "Выбрать по фильму от каждого участника",
         rename = "random_per_user"
     )]
     RandomPerUser,
@@ -49,23 +54,26 @@ pub enum Command {
 
     #[command(description = "Присоединится к чату")]
     Join,
+
     #[command(description = "Покинуть чат")]
     Leave,
+
+    #[command(description = "Отменить текущее действие")]
+    Cancel,
 }
 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
     // use dptree::case;
 
-    let command_handler = teloxide::filter_command::<Command, _>().endpoint(handle_command);
+    let command_handler = teloxide::filter_command::<Command, _>()
+        .enter_dialogue::<Message, InMemStorage<Dialogue>, Dialogue>()
+        .endpoint(handle_command);
 
-    let message_handler =
-        Update::filter_message()
-            .branch(command_handler)
-            .branch(dptree::endpoint(|msg: Message, bot: Bot| async move {
-                bot.send_message(msg.chat.id, "Неизвестная комманда. /help для справки")
-                    .await?;
-                Ok(())
-            }));
+    let message_handler = Update::filter_message().branch(command_handler).branch(
+        dptree::entry()
+            .enter_dialogue::<Message, InMemStorage<Dialogue>, Dialogue>()
+            .endpoint(handle_message),
+    );
 
     message_handler
 }
@@ -76,7 +84,8 @@ async fn handle_command(
     cmd: Command,
     pool: SqlitePool,
     api_client: KinoClient,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    dialogue: DialogueState,
+) -> HandlerResult {
     if !msg.chat.is_private() {
         if let Some(ref user) = msg.from {
             let chat_id = msg.chat.id.0;
@@ -87,6 +96,8 @@ async fn handle_command(
         }
     }
 
+    dialogue.update(Dialogue::Start).await?;
+
     match cmd {
         Command::Start => {
             start::handle(bot, msg).await?;
@@ -95,7 +106,7 @@ async fn handle_command(
             help::handle(bot, msg).await?;
         }
         Command::Add(url) => {
-            add_film::handle(bot, msg, pool, api_client, url).await?;
+            add_film::handle(bot, msg, pool, api_client, dialogue, url).await?;
         }
         Command::Count => {
             count::handle(bot, msg, pool).await?;
@@ -118,6 +129,44 @@ async fn handle_command(
         Command::Leave => {
             leave::handle(bot, msg, pool).await?;
         }
+        Command::Cancel => {
+            bot.send_message(msg.chat.id, "✅ Операция отменена.")
+                .await?;
+        }
     }
+    Ok(())
+}
+
+async fn handle_message(
+    bot: Bot,
+    msg: Message,
+    dialogue: DialogueState,
+    state: Dialogue,
+    pool: SqlitePool,
+    api_client: KinoClient,
+) -> HandlerResult {
+    if !msg.chat.is_private() {
+        if let Some(ref user) = msg.from {
+            let chat_id = msg.chat.id.0;
+            let telegram_id = user.id.0 as i64;
+            let username = user.username.clone();
+
+            repository::register_chat_member(&pool, chat_id, telegram_id, username).await?;
+        }
+    }
+
+    match state {
+        Dialogue::Start => {
+            bot.send_message(
+                msg.chat.id,
+                "Неизвестная команда. Напиши /help чтобы узнать список доступных комманд.",
+            )
+            .await?;
+        }
+        Dialogue::WaitForUrl => {
+            add_film::handle_url_message(bot, msg, pool, api_client, dialogue).await?;
+        }
+    }
+
     Ok(())
 }

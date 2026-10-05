@@ -4,7 +4,7 @@ use teloxide::sugar::request::RequestLinkPreviewExt;
 use teloxide::types::ParseMode;
 use teloxide::utils::html::escape;
 
-use crate::repository;
+use crate::{dialogue::HandlerResult, repository};
 
 fn choose_multiple<T: Clone>(items: &[T], count: usize) -> Vec<T> {
     let mut indices: Vec<usize> = (0..items.len()).collect();
@@ -20,12 +20,7 @@ fn choose_multiple<T: Clone>(items: &[T], count: usize) -> Vec<T> {
     result
 }
 
-pub async fn handle(
-    bot: Bot,
-    msg: Message,
-    pool: SqlitePool,
-    count: i32,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool, count: i32) -> HandlerResult {
     let chat_id = msg.chat.id.0;
 
     if msg.chat.is_private() {
