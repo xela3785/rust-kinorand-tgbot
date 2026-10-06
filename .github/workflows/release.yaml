@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release Version (example: 1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION=${GITHUB_REF_NAME#v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build Docker image
+        run: |
+          docker build -t kinorand_bot:${{ steps.version.outputs.version }} .
+          docker tag kinorand_bot:${{ steps.version.outputs.version }} kinorand_bot:latest
+
+      - name: Save Docker image to tar.gz
+        run: |
+          docker save kinorand_bot:latest | gzip > kinorand_bot-${{ steps.version.outputs.version }}.tar.gz
+          ls -lh kinorand_bot-${{ steps.version.outputs.version }}.tar.gz
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            kinorand_bot-${{ steps.version.outputs.version }}.tar.gz
+            kinorand_bot-${{ steps.version.outputs.version }}-deploy.tar.gz
