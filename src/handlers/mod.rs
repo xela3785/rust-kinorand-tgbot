@@ -10,6 +10,7 @@ use crate::repository;
 
 mod add_film;
 mod count;
+mod delete;
 mod help;
 mod join;
 mod leave;
@@ -51,6 +52,9 @@ pub enum Command {
 
     #[command(description = "Отметить непросмотренным: /unseen [ссылка на кинопоиск]")]
     Unseen(String),
+
+    #[command(description = "Удалить фильм: /delete [ссылка на кинопоиск]")]
+    Delete(String),
 
     #[command(description = "Присоединится к чату")]
     Join,
@@ -122,6 +126,9 @@ async fn handle_command(
         }
         Command::Unseen(url) => {
             unseen::handle(bot, msg, pool, url).await?;
+        }
+        Command::Delete(url) => {
+            delete::handle(bot, msg, pool, url).await?;
         }
         Command::Join => {
             join::handle(bot, msg, pool).await?;

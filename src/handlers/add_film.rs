@@ -76,11 +76,24 @@ async fn process_url(
         }
     };
 
-    if repository::film_exists(&pool, kinopoisk_id).await? {
-        bot.send_message(msg.chat.id, "ℹ️ Такой фильм уже есть")
-            .await?;
-        dialogue.update(Dialogue::Start).await?;
-        return Ok(());
+    let telegram_id = msg.from.as_ref().map(|u| u.id.0 as i64).unwrap_or(0);
+
+    if msg.chat.is_private() {
+        if repository::film_exists_for_user(&pool, kinopoisk_id, telegram_id).await? {
+            bot.send_message(msg.chat.id, "ℹ️ Такой фильм уже есть")
+                .await?;
+            dialogue.update(Dialogue::Start).await?;
+            return Ok(());
+        }
+    } else {
+        let chat_id = msg.chat.id.0;
+
+        if repository::film_exists_for_chat(&pool, kinopoisk_id, chat_id).await? {
+            bot.send_message(msg.chat.id, "ℹ️ Такой фильм уже есть")
+                .await?;
+            dialogue.update(Dialogue::Start).await?;
+            return Ok(());
+        }
     }
 
     let metadata = match api_client.find_by_id(kinopoisk_id, url).await {

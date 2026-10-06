@@ -32,12 +32,42 @@ pub async fn add_film(
     Ok(result.last_insert_rowid())
 }
 
-pub async fn film_exists(pool: &SqlitePool, kinopoisk_id: i64) -> Result<bool> {
-    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM films WHERE kinopoisk_id = ?")
-        .bind(kinopoisk_id)
-        .fetch_one(pool)
-        .await?;
-    Ok(count.0 > 0)
+pub async fn film_exists_for_chat(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    chat_id: i64,
+) -> Result<bool> {
+    let exists = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM films WHERE kinopoisk_id = ? AND telegram_id IN (
+                SELECT telegram_id FROM chat_members WHERE chat_id = ?
+            )
+        )
+        "#,
+    )
+    .bind(kinopoisk_id)
+    .bind(chat_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(exists)
+}
+
+pub async fn film_exists_for_user(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    telegram_id: i64,
+) -> Result<bool> {
+    let exists = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM films WHERE kinopoisk_id = ? AND telegram_id = ?)",
+    )
+    .bind(kinopoisk_id)
+    .bind(telegram_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(exists)
 }
 
 pub async fn count_user_films(pool: &SqlitePool, telegram_id: i64) -> Result<i64> {
@@ -111,7 +141,7 @@ pub async fn is_chat_member(pool: &SqlitePool, chat_id: i64, telegram_id: i64) -
     Ok(count.0 > 0)
 }
 
-pub async fn mark_film_as_seen(
+pub async fn mark_film_as_seen_for_user(
     pool: &SqlitePool,
     kinopoisk_id: i64,
     telegram_id: i64,
@@ -127,7 +157,28 @@ pub async fn mark_film_as_seen(
     Ok(result.rows_affected() > 0)
 }
 
-pub async fn mark_film_unseen(
+pub async fn mark_film_as_seen_for_chat(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    chat_id: i64,
+) -> Result<bool> {
+    let result = sqlx::query(
+        r#"
+        UPDATE films SET is_seen = ? WHERE kinopoisk_id = ? AND telegram_id IN (
+            SELECT telegram_id FROM chat_members WHERE chat_id = ?
+        )
+        "#,
+    )
+    .bind(true)
+    .bind(kinopoisk_id)
+    .bind(chat_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn mark_film_unseen_for_user(
     pool: &SqlitePool,
     kinopoisk_id: i64,
     telegram_id: i64,
@@ -139,6 +190,27 @@ pub async fn mark_film_unseen(
             .bind(telegram_id)
             .execute(pool)
             .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn mark_film_unseen_for_chat(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    chat_id: i64,
+) -> Result<bool> {
+    let result = sqlx::query(
+        r#"
+        UPDATE films SET is_seen = ? WHERE kinopoisk_id = ? AND telegram_id IN (
+            SELECT telegram_id FROM chat_members WHERE chat_id = ?
+        )
+        "#,
+    )
+    .bind(false)
+    .bind(kinopoisk_id)
+    .bind(chat_id)
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -172,4 +244,42 @@ pub async fn get_personal_films(pool: &SqlitePool, telegram_id: i64) -> Result<V
     .await?;
 
     Ok(films)
+}
+
+pub async fn delete_film_for_chat(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    chat_id: i64,
+) -> Result<bool> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM films
+        WHERE kinopoisk_id = ? 
+          AND telegram_id IN (
+              SELECT telegram_id 
+              FROM chat_members 
+              WHERE chat_id = ?
+          )
+        "#,
+    )
+    .bind(kinopoisk_id)
+    .bind(chat_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn delete_film_for_user(
+    pool: &SqlitePool,
+    kinopoisk_id: i64,
+    telegram_id: i64,
+) -> Result<bool> {
+    let result = sqlx::query("DELETE FROM films WHERE kinopoisk_id = ? AND telegram_id = ?")
+        .bind(kinopoisk_id)
+        .bind(telegram_id)
+        .execute(pool)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
 }

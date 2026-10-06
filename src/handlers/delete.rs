@@ -9,24 +9,26 @@ pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool, url: String) -> Ha
     if url.is_empty() {
         bot.send_message(
             msg.chat.id,
-            "⚠️ Укажи ссылку на фильм с кинопоиска. Пример: \n `/seen https://kinopoisk.ru/film/12345/`"
+            "Укажи ссылку на фильм с кинопоиска. Пример: \n `/delete https://www.kinopoisk.ru/film/12345/`",
         )
         .disable_link_preview(true)
         .await?;
+
         return Ok(());
     }
 
     let kinopoisk_id = match id_parser::extract_id(url) {
         Ok(id) => id,
         Err(e) => {
-            log::error!("Failed extract id from url: {}", e);
-            bot.send_message(msg.chat.id, "⚠️ Не удалось извлечь ID фильма из ссылки.")
+            log::error!("Failed to parse ID from url: {}", e);
+            bot.send_message(msg.chat.id, "⚠️ Не удалось извлечь ID фильма из ссылки")
                 .await?;
+
             return Ok(());
         }
     };
 
-    let updated = if msg.chat.is_private() {
+    let deleted = if msg.chat.is_private() {
         let telegram_id = msg.from.as_ref().map(|u| u.id.0 as i64).unwrap_or(0);
 
         if !repository::film_exists_for_user(&pool, kinopoisk_id, telegram_id).await? {
@@ -35,7 +37,7 @@ pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool, url: String) -> Ha
             return Ok(());
         }
 
-        repository::mark_film_as_seen_for_user(&pool, kinopoisk_id, telegram_id).await?
+        repository::delete_film_for_user(&pool, kinopoisk_id, telegram_id).await?
     } else {
         let chat_id = msg.chat.id.0;
 
@@ -45,18 +47,15 @@ pub async fn handle(bot: Bot, msg: Message, pool: SqlitePool, url: String) -> Ha
             return Ok(());
         }
 
-        repository::mark_film_as_seen_for_chat(&pool, kinopoisk_id, chat_id).await?
+        repository::delete_film_for_chat(&pool, kinopoisk_id, chat_id).await?
     };
 
-    if updated {
-        bot.send_message(msg.chat.id, "✅ Фильм успешно отмечен как просмотренный")
+    if deleted {
+        bot.send_message(msg.chat.id, "✅ Фильм успешно удален")
             .await?;
     } else {
-        bot.send_message(
-            msg.chat.id,
-            "⚠️ Не удалось отметить фильм как просмотренный",
-        )
-        .await?;
+        bot.send_message(msg.chat.id, "❌ Не удалось удалить фильм")
+            .await?;
     }
 
     Ok(())
