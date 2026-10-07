@@ -1,8 +1,17 @@
 use anyhow::Result;
-use sqlx::SqlitePool;
+use sqlx::{FromRow, SqlitePool};
 
 use crate::integrations::movie_api::MovieMetadata;
 use crate::models::Film;
+
+#[derive(Debug, FromRow)]
+pub struct UserFilmPageRow {
+    pub title: Option<String>,
+    pub original_title: Option<String>,
+    pub year: Option<i64>,
+    pub is_seen: bool,
+    pub kinopoisk_url: Option<String>,
+}
 
 pub async fn add_film(
     pool: &SqlitePool,
@@ -30,6 +39,30 @@ pub async fn add_film(
     .execute(pool)
     .await?;
     Ok(result.last_insert_rowid())
+}
+
+pub async fn get_user_films_list(
+    pool: &SqlitePool,
+    telegram_id: i64,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<UserFilmPageRow>> {
+    let films = sqlx::query_as::<_, UserFilmPageRow>(
+        r#"
+        SELECT title, original_title, year, kinopoisk_id, is_seen, kinopoisk_url
+        FROM films
+        WHERE telegram_id = ?
+        ORDER BY is_seen ASC, created_at DESC, id DESC
+        LIMIT ? OFFSET ?
+        "#,
+    )
+    .bind(telegram_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(films)
 }
 
 pub async fn film_exists_for_chat(
