@@ -128,7 +128,7 @@ async fn build_user_films_page(
         return Ok(RenderedList {
             text: concat!(
                 "📋 У тебя пока нет фильмов в списке. \n",
-                "Добавь фильм командой /add <ссылка на кинопоиск>"
+                "Добавь фильм командой /add"
             )
             .to_string(),
             keyboard: None,

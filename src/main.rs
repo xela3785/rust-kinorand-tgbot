@@ -27,9 +27,13 @@ async fn main() -> anyhow::Result<()> {
         env::var("KINO_API_BASE_URL").expect("KINO_API_BASE_URL environment variable not set");
 
     log::info!("DB initialized...");
+
+    let db_path =
+        std::env::var("DATABASE_PATH").unwrap_or_else(|_| "/app/data/films.db".to_string());
+
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
-        .connect("sqlite:films.db?mode=rwc")
+        .connect(&format!("sqlite:{}?mode=rwc", db_path))
         .await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
