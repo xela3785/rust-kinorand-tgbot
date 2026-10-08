@@ -14,6 +14,7 @@ mod delete;
 mod help;
 mod join;
 mod leave;
+mod list;
 mod random;
 mod random_per_user;
 mod seen;
@@ -64,6 +65,9 @@ pub enum Command {
 
     #[command(description = "Отменить текущее действие")]
     Cancel,
+
+    #[command(description = "Показать список моих фильмов")]
+    List,
 }
 
 pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -79,7 +83,12 @@ pub fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'stat
             .endpoint(handle_message),
     );
 
-    message_handler
+    let callback_handler = Update::filter_callback_query().endpoint(handle_callback);
+
+    // message_handler
+    dptree::entry()
+        .branch(message_handler)
+        .branch(callback_handler)
 }
 
 async fn handle_command(
@@ -140,6 +149,9 @@ async fn handle_command(
             bot.send_message(msg.chat.id, "✅ Операция отменена.")
                 .await?;
         }
+        Command::List => {
+            list::handle(bot, msg, pool).await?;
+        }
     }
     Ok(())
 }
@@ -174,6 +186,23 @@ async fn handle_message(
             add_film::handle_url_message(bot, msg, pool, api_client, dialogue).await?;
         }
     }
+
+    Ok(())
+}
+
+async fn handle_callback(
+    bot: Bot,
+    q: CallbackQuery,
+    pool: SqlitePool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let data = q.data.clone().unwrap_or_default();
+
+    if data == "noop" || data.starts_with("list:") {
+        list::handle_list_callback(bot, q, pool).await?;
+        return Ok(());
+    }
+
+    bot.answer_callback_query(q.id).await?;
 
     Ok(())
 }

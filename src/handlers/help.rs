@@ -17,7 +17,7 @@ pub async fn handle(bot: Bot, msg: Message) -> HandlerResult {
 
 fn build_help_message() -> String {
     // Заголовок
-    let mut text = String::from("🎬 <b>Кино-жемчужины</b> — помощник для выбора фильмов\n\n");
+    let mut text = String::from("🎬 <b>Кино трекер</b> — помощник для выбора фильмов\n\n");
 
     // Основная группа
     text.push_str("⚙️ <b>Основное</b>\n");
@@ -27,6 +27,7 @@ fn build_help_message() -> String {
 
     // Управление списком
     text.push_str("🎞 <b>Управление списком</b>\n");
+    text.push_str("  <code>/list</code> — 📋 показать список фильмов\n");
     text.push_str("  <code>/add</code> <i>[ссылка на Кинопоиск]</i>\n");
     text.push_str("       ➕ добавить фильм в список\n");
     text.push_str("  <code>/delete</code> <i>[ссылка на Кинопоиск]</i>\n");
